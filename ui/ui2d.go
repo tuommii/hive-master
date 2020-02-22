@@ -18,14 +18,17 @@ type UI2d struct {
 
 const (
 	winWidth, winHeight = 1920, 1080
+	tileSize            = 48
 )
 
 var renderer *sdl.Renderer
 var window *sdl.Window
 var textureAtlas *sdl.Texture
-var textureIndex map[game.Tile]sdl.Rect
+var textureIndex map[rune]sdl.Rect
 var keyboardState []uint8
 var prevKeyboardState []uint8
+var centerX int
+var centerY int
 
 func init() {
 	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
@@ -44,7 +47,7 @@ func init() {
 		panic(err)
 	}
 
-	renderer.SetScale(3, 3)
+	//renderer.SetScale(2, 2)
 	textureAtlas, err = img.LoadTexture(renderer, "ui/assets/dungeon_tileset.png")
 	if err != nil {
 		fmt.Println(err)
@@ -57,6 +60,8 @@ func init() {
 	for i, v := range keyboardState {
 		prevKeyboardState[i] = v
 	}
+	centerX = -1
+	centerY = -1
 }
 
 func loadTextureIndex(filename string) {
@@ -67,11 +72,12 @@ func loadTextureIndex(filename string) {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
-	textureIndex = make(map[game.Tile]sdl.Rect)
+	textureIndex = make(map[rune]sdl.Rect)
 	for scanner.Scan() {
 		line := scanner.Text()
 		line = strings.TrimSpace(line)
-		tileRune := game.Tile(line[0])
+		var tile game.Tile
+		tile.Rune = rune(line[0])
 		xy := line[1:]
 		split := strings.Split(xy, ",")
 		x, err := strconv.ParseInt(strings.TrimSpace(split[0]), 10, 64)
@@ -86,20 +92,48 @@ func loadTextureIndex(filename string) {
 		tileIndexY := y
 		tileRect := sdl.Rect{X: int32(tileIndexX), Y: int32(tileIndexY), W: 16, H: 16}
 		fmt.Println(tileRect)
-		textureIndex[tileRune] = tileRect
+		textureIndex[tile.Rune] = tileRect
 	}
 }
 
 func (ui UI2d) Draw(level *game.Level) {
+	if centerX == -1 && centerY == -1 {
+		centerX = level.Player.Pos.X
+		centerY = level.Player.Pos.Y
+	}
+
+	//dx := level.Player.Pos.X - centerX
+	//dy := level.Player.Pos.Y - centerY
+
+	moveThreshold := 4
+	if level.Player.Pos.X > centerX+moveThreshold {
+		centerX++
+	} else if level.Player.Pos.X < centerX-moveThreshold {
+		centerX--
+	} else if level.Player.Pos.Y > centerY+moveThreshold {
+		centerY++
+	} else if level.Player.Pos.Y < centerY-moveThreshold {
+		centerY--
+	}
+
+	offsetX := int32((winWidth / 2) - centerX*tileSize)
+	offsetY := int32((winHeight / 2) - centerY*tileSize)
+	renderer.Clear()
 	for y, row := range level.Map {
 		for x, tile := range row {
-			if tile != game.Blank {
-				srcRect := textureIndex[level.Map[y][x]]
+			if tile.Rune != game.Blank {
+				srcRect := textureIndex[level.Map[y][x].Rune]
 				destRect := sdl.Rect{
-					X: int32(x * 16),
-					Y: int32(y * 16),
-					W: 16,
-					H: 16,
+					X: int32(x*tileSize) + offsetX,
+					Y: int32(y*tileSize) + offsetY,
+					W: tileSize,
+					H: tileSize,
+				}
+				pos := game.Position{x, y}
+				if level.Debug[pos] {
+					textureAtlas.SetColorMod(128, 255, 128)
+				} else {
+					textureAtlas.SetColorMod(255, 255, 255)
 				}
 				renderer.Copy(textureAtlas, &srcRect, &destRect)
 			}
@@ -107,10 +141,10 @@ func (ui UI2d) Draw(level *game.Level) {
 	}
 	playerSrcRect := textureIndex['@']
 	playerDestRect := sdl.Rect{
-		X: int32(level.Player.X * 16),
-		Y: int32(level.Player.Y * 16),
-		W: 16,
-		H: 16,
+		X: int32(level.Player.Pos.X*tileSize) + offsetX,
+		Y: int32(level.Player.Pos.Y*tileSize) + offsetY,
+		W: tileSize,
+		H: tileSize,
 	}
 	renderer.Copy(textureAtlas, &playerSrcRect, &playerDestRect)
 	renderer.Present()
@@ -125,16 +159,18 @@ func (ui *UI2d) GetInput() *game.Input {
 				return &game.Input{Type: game.Quit}
 			}
 		}
-		if keyboardState[sdl.SCANCODE_ESCAPE] == 0 && prevKeyboardState[sdl.SCANCODE_ESCAPE] == 1 {
+		if keyboardState[sdl.SCANCODE_ESCAPE] == 1 && prevKeyboardState[sdl.SCANCODE_ESCAPE] == 0 {
 			input.Type = game.Quit
-		} else if keyboardState[sdl.SCANCODE_UP] == 0 && prevKeyboardState[sdl.SCANCODE_UP] == 1 {
+		} else if keyboardState[sdl.SCANCODE_UP] == 1 && prevKeyboardState[sdl.SCANCODE_UP] == 0 {
 			input.Type = game.Up
-		} else if keyboardState[sdl.SCANCODE_DOWN] == 0 && prevKeyboardState[sdl.SCANCODE_DOWN] == 1 {
+		} else if keyboardState[sdl.SCANCODE_DOWN] == 1 && prevKeyboardState[sdl.SCANCODE_DOWN] == 0 {
 			input.Type = game.Down
-		} else if keyboardState[sdl.SCANCODE_LEFT] == 0 && prevKeyboardState[sdl.SCANCODE_LEFT] == 1 {
+		} else if keyboardState[sdl.SCANCODE_LEFT] == 1 && prevKeyboardState[sdl.SCANCODE_LEFT] == 0 {
 			input.Type = game.Left
-		} else if keyboardState[sdl.SCANCODE_RIGHT] == 0 && prevKeyboardState[sdl.SCANCODE_RIGHT] == 1 {
+		} else if keyboardState[sdl.SCANCODE_RIGHT] == 1 && prevKeyboardState[sdl.SCANCODE_RIGHT] == 0 {
 			input.Type = game.Right
+		} else if keyboardState[sdl.SCANCODE_SPACE] == 1 && prevKeyboardState[sdl.SCANCODE_SPACE] == 0 {
+			input.Type = game.Search
 		}
 		for i, v := range keyboardState {
 			prevKeyboardState[i] = v

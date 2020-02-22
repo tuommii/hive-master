@@ -2,8 +2,9 @@ package game
 
 import (
 	"bufio"
-	"fmt"
+	"math"
 	"os"
+	"sort"
 )
 
 type GameUI interface {
@@ -19,6 +20,7 @@ const (
 	Down
 	Left
 	Right
+	Search
 	Quit
 )
 
@@ -26,17 +28,40 @@ type Input struct {
 	Type InputType
 }
 
-type Tile rune
+type Position struct {
+	X int
+	Y int
+}
+
+type Tile struct {
+	Rune rune
+}
+
+type priorityPos struct {
+	Position
+	priority int
+}
+
+type priorityArray []priorityPos
+
+func (p priorityArray) Len() int           { return len(p) }
+func (p priorityArray) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+func (p priorityArray) Less(i, j int) bool { return p[i].priority < p[j].priority }
 
 const (
-	Blank Tile = ' '
-	Wall  Tile = '#'
-	Floor Tile = '.'
+	Blank       rune = ' '
+	Wall        rune = '#'
+	Floor       rune = '.'
+	ClosedDoor  rune = '|'
+	OpenDoor    rune = '/'
+	ClosedChest rune = '*'
+	OpenChest   rune = 'o'
 )
 
 type Level struct {
 	Map    [][]Tile
 	Player Player
+	Debug  map[Position]bool
 }
 
 func LoadLevelFromFile(filename string) *Level {
@@ -71,13 +96,21 @@ func LoadLevelFromFile(filename string) *Level {
 			var t Tile
 			switch c {
 			case ' ', '\t', '\r':
-				t = Blank
+				t.Rune = Blank
 			case '#':
-				t = Wall
+				t.Rune = Wall
 			case '.':
-				t = Floor
+				t.Rune = Floor
+			case '|':
+				t.Rune = ClosedDoor
+			case '/':
+				t.Rune = OpenDoor
+			case '*':
+				t.Rune = ClosedChest
+			case 'o':
+				t.Rune = OpenChest
 			default:
-				t = Blank
+				t.Rune = Blank
 			}
 			level.Map[y][x] = t
 		}
@@ -85,29 +118,133 @@ func LoadLevelFromFile(filename string) *Level {
 	return level
 }
 
+func getNeighbors(level *Level, pos Position) []Position {
+	neighbors := make([]Position, 0, 4)
+	left := Position{pos.X - 1, pos.Y}
+	right := Position{pos.X + 1, pos.Y}
+	up := Position{pos.X, pos.Y - 1}
+	down := Position{pos.X, pos.Y + 1}
+
+	if canMove(left, level) {
+		neighbors = append(neighbors, left)
+	}
+	if canMove(right, level) {
+		neighbors = append(neighbors, right)
+	}
+	if canMove(up, level) {
+		neighbors = append(neighbors, up)
+	}
+	if canMove(down, level) {
+		neighbors = append(neighbors, down)
+	}
+
+	return neighbors
+}
+
+func bfs(ui GameUI, level *Level, startPos Position) {
+	frontier := make([]Position, 0, 8)
+	frontier = append(frontier, startPos)
+	visited := make(map[Position]bool)
+	visited[startPos] = true
+	level.Debug = visited
+	for len(frontier) > 0 {
+		current := frontier[0]
+		frontier = frontier[1:]
+		for _, next := range getNeighbors(level, current) {
+			if !visited[next] {
+				frontier = append(frontier, next)
+				visited[next] = true
+			}
+		}
+	}
+}
+
+func astar(ui GameUI, level *Level, start Position, goal Position) {
+	frontier := make(priorityArray, 0, 0)
+	frontier = append(frontier, priorityPos{start, 1})
+	cameFrom := make(map[Position]Position)
+	cameFrom[start] = start
+	costSoFar := make(map[Position]int)
+	costSoFar[start] = 0
+	for len(frontier) > 0 {
+		sort.Stable(frontier)
+		current := frontier[0]
+		//level.Debug[current.Position] = true
+		if current.Position == goal {
+			p := current.Position
+			for p != start {
+				level.Debug[p] = true
+				p = cameFrom[p]
+			}
+			level.Debug[p] = true
+			break
+		}
+
+		frontier = frontier[1:]
+		for _, next := range getNeighbors(level, current.Position) {
+			newCost := costSoFar[current.Position] + 1
+			_, exists := costSoFar[next]
+			if !exists || newCost < costSoFar[next] {
+				costSoFar[next] = newCost
+				xDist := int(math.Abs(float64(goal.X - next.X)))
+				yDist := int(math.Abs(float64(goal.Y - next.Y)))
+				priority := newCost + xDist + yDist
+				frontier = append(frontier, priorityPos{next, priority})
+				cameFrom[next] = current.Position
+				//level.Debug[next] = true
+			}
+		}
+	}
+}
+
+func canMove(pos Position, level *Level) bool {
+	if level.Map[pos.Y][pos.X].Rune == Wall || level.Map[pos.Y][pos.X].Rune == ClosedDoor || level.Map[pos.Y][pos.X].Rune == ClosedChest {
+		return false
+	}
+	return true
+}
+
+func checkDoor(pos Position, level *Level) {
+	if level.Map[pos.Y][pos.X].Rune == ClosedDoor {
+		level.Map[pos.Y][pos.X].Rune = OpenDoor
+	} else if level.Map[pos.Y][pos.X].Rune == ClosedChest {
+		level.Map[pos.Y][pos.X].Rune = OpenChest
+	}
+}
+
 func handleInput(level *Level, input *Input) {
+	toPos := level.Player.Pos
 	switch input.Type {
 	case Up:
-		level.Player.Y--
+		toPos.Y--
 	case Down:
-		level.Player.Y++
+		toPos.Y++
 	case Left:
-		level.Player.X--
+		toPos.X--
 	case Right:
-		level.Player.X++
+		toPos.X++
 	}
-	fmt.Println(input.Type)
+	if canMove(toPos, level) {
+		level.Player.Move(toPos)
+	} else {
+		checkDoor(toPos, level)
+	}
 }
 
 func Run(ui GameUI) {
 	level := LoadLevelFromFile("game/maps/level1.map")
-	level.Player.X = 5
-	level.Player.Y = 5
+	level.Debug = make(map[Position]bool)
+	level.Player.Pos.X = 5
+	level.Player.Pos.Y = 5
 	for {
 		ui.Draw(level)
 		input := ui.GetInput()
 		if input.Type == Quit {
 			return
+		}
+		if input.Type == Search {
+			level.Debug = make(map[Position]bool)
+			astar(ui, level, level.Player.Pos, Position{9, 4})
 		}
 		handleInput(level, input)
 	}
