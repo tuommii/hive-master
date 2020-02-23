@@ -29,7 +29,7 @@ func handleInput(level *Level, input *Input) {
 		toPos.X++
 	}
 	if canMove(toPos, level) {
-		level.Player.Move(toPos)
+		level.Player.Move(toPos, level)
 	} else {
 		checkDoor(toPos, level)
 	}

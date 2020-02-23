@@ -2,13 +2,16 @@ package game
 
 import (
 	"bufio"
+	"math"
+	"math/rand"
 	"os"
 )
 
 type Level struct {
-	Map    [][]Tile
-	Player *Player
-	Debug  map[Position]bool
+	Map     [][]Tile
+	Player  *Player
+	Enemies []*Enemy
+	Debug   map[Position]bool
 }
 
 func LoadLevelFromFile(filename string) *Level {
@@ -101,4 +104,13 @@ func getNeighbors(level *Level, pos Position) []Position {
 	}
 
 	return neighbors
+}
+
+func getRandomPositionInsideCircle(radius int, pos Position) Position {
+	var p Position
+	angle := 2.0 * math.Pi * rand.Float64()
+	r := float64(radius) * math.Sqrt(rand.Float64())
+	p.X = int(r*math.Cos(angle) + float64(pos.X))
+	p.Y = int(r*math.Sin(angle) + float64(pos.Y))
+	return p
 }

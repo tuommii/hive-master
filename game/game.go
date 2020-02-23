@@ -11,6 +11,8 @@ type GameUI interface {
 	Draw(*Level)
 	GetInput() *Input
 	GetTextureIndex(rune) *sdl.Rect
+	GetTextureAtlas() *sdl.Texture
+	NewCharacterLabel(character *Character)
 }
 
 type Position struct {
@@ -43,6 +45,8 @@ const (
 	OpenChest   rune = 'o'
 )
 
+type Path []Position
+
 func bfs(ui GameUI, level *Level, startPos Position) {
 	frontier := make([]Position, 0, 8)
 	frontier = append(frontier, startPos)
@@ -61,7 +65,10 @@ func bfs(ui GameUI, level *Level, startPos Position) {
 	}
 }
 
-func astar(level *Level, start Position, goal Position) {
+func astar(level *Level, start Position, goal Position) Path {
+	var path Path
+	path = make(Path, 0)
+
 	frontier := make(priorityArray, 0, 0)
 	frontier = append(frontier, priorityPos{start, 1})
 	cameFrom := make(map[Position]Position)
@@ -74,11 +81,19 @@ func astar(level *Level, start Position, goal Position) {
 		if current.Position == goal {
 			p := current.Position
 			for p != start {
-				level.Debug[p] = true
+				//level.Debug[p] = true
+				path = append(path, p)
 				p = cameFrom[p]
 			}
-			level.Debug[p] = true
-			break
+			//path = append(path, p)
+			//level.Debug[p] = true
+
+			// Reverse slice
+			for i := len(path)/2 - 1; i >= 0; i-- {
+				opp := len(path) - 1 - i
+				path[i], path[opp] = path[opp], path[i]
+			}
+			return path
 		}
 
 		frontier = frontier[1:]
@@ -95,15 +110,24 @@ func astar(level *Level, start Position, goal Position) {
 			}
 		}
 	}
+	return nil
 }
 
 func Run(gameUI GameUI) {
 	level := LoadLevelFromFile("game/maps/level1.map")
-	level.Player = NewPlayer("name", 5.0, Position{5, 5}, gameUI.GetTextureIndex('@'))
-	level.Debug = make(map[Position]bool)
-	level.Player.Pos.X = 5
-	level.Player.Pos.Y = 5
+	level.Player = NewPlayer("wkorande", 5.0, Position{5, 5}, gameUI.GetTextureAtlas(), gameUI.GetTextureIndex('@'))
+	gameUI.NewCharacterLabel(&level.Player.Character)
+
+	level.Enemies = make([]*Enemy, 0)
+	enemy := NewEnemy("bocal", 1.0, Position{5, 13}, gameUI.GetTextureAtlas(), gameUI.GetTextureIndex('E'))
+	level.Enemies = append(level.Enemies, enemy)
+	gameUI.NewCharacterLabel(&enemy.Character)
+
 	for {
+		level.Debug = make(map[Position]bool)
+		for _, e := range level.Enemies {
+			e.Update(level)
+		}
 		gameUI.Draw(level)
 		input := gameUI.GetInput()
 		if input.Type == Quit {
@@ -111,8 +135,10 @@ func Run(gameUI GameUI) {
 		}
 		if input.Type == Search {
 			level.Debug = make(map[Position]bool)
-			astar(level, level.Player.Pos, Position{9, 4})
+			//astar(level, level.Player.Pos, getRandomPositionInsideCircle(5, level.Player.Pos))
 		}
+
 		handleInput(level, input)
+
 	}
 }

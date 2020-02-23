@@ -43,8 +43,8 @@ func (l *label) Draw(pos game.Position) {
 		return
 	}
 	destRect := &sdl.Rect{
-		X: int32(pos.X),
-		Y: int32(pos.Y),
+		X: int32(pos.X)*tileSize + offsetX - clipRect.W/2 + tileSize/2,
+		Y: int32(pos.Y)*tileSize + offsetY - tileSize/2,
 		W: clipRect.W,
 		H: clipRect.H,
 	}

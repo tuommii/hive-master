@@ -30,10 +30,21 @@ var keyboardState []uint8
 var prevKeyboardState []uint8
 var centerX int
 var centerY int
+var offsetX int32
+var offsetY int32
+var characterLabels map[*game.Character]Label
 
 func (ui *UI2d) GetTextureIndex(r rune) *sdl.Rect {
 	i := textureIndex[r]
 	return &i
+}
+
+func (ui *UI2d) GetTextureAtlas() *sdl.Texture {
+	return textureAtlas
+}
+
+func (ui *UI2d) NewCharacterLabel(character *game.Character) {
+	characterLabels[character] = NewLabel(character.Name, renderer)
 }
 
 func init() {
@@ -71,6 +82,7 @@ func init() {
 	}
 	centerX = -1
 	centerY = -1
+	characterLabels = make(map[*game.Character]Label)
 }
 
 func loadTextureIndex(filename string) {
@@ -105,13 +117,10 @@ func loadTextureIndex(filename string) {
 }
 
 func (ui UI2d) Draw(level *game.Level) {
-	label := NewLabel("wkorande", renderer)
-
 	if centerX == -1 && centerY == -1 {
 		centerX = level.Player.Pos.X
 		centerY = level.Player.Pos.Y
 	}
-
 	moveThreshold := 4
 	if level.Player.Pos.X > centerX+moveThreshold {
 		centerX++
@@ -123,8 +132,8 @@ func (ui UI2d) Draw(level *game.Level) {
 		centerY--
 	}
 
-	offsetX := int32((winWidth / 2) - centerX*tileSize)
-	offsetY := int32((winHeight / 2) - centerY*tileSize)
+	offsetX = int32((winWidth / 2) - centerX*tileSize)
+	offsetY = int32((winHeight / 2) - centerY*tileSize)
 	renderer.Clear()
 	for y, row := range level.Map {
 		for x, tile := range row {
@@ -146,17 +155,14 @@ func (ui UI2d) Draw(level *game.Level) {
 			}
 		}
 	}
-	playerSrcRect := textureIndex['@']
-	playerDestRect := sdl.Rect{
-		X: int32(level.Player.Pos.X*tileSize) + offsetX,
-		Y: int32(level.Player.Pos.Y*tileSize) + offsetY,
-		W: tileSize,
-		H: tileSize,
+	for _, enemy := range level.Enemies {
+		enemy.Draw(renderer, tileSize, offsetX, offsetY)
+		label := characterLabels[&enemy.Character]
+		label.Draw(enemy.Pos)
 	}
-	renderer.Copy(textureAtlas, &playerSrcRect, &playerDestRect)
-
-	label.Draw(game.Position{level.Player.Pos.X*tileSize + int(offsetX) - tileSize/2, level.Player.Pos.Y*tileSize + int(offsetY) - tileSize/2})
-
+	level.Player.Draw(renderer, tileSize, offsetX, offsetY)
+	label := characterLabels[&level.Player.Character]
+	label.Draw(level.Player.Pos)
 	renderer.Present()
 }
 
