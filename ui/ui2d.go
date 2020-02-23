@@ -9,6 +9,7 @@ import (
 
 	"github.com/veandco/go-sdl2/img"
 	"github.com/veandco/go-sdl2/sdl"
+	"github.com/veandco/go-sdl2/ttf"
 	"github.com/wehard/hive-master/game"
 )
 
@@ -30,8 +31,17 @@ var prevKeyboardState []uint8
 var centerX int
 var centerY int
 
+func (ui *UI2d) GetTextureIndex(r rune) *sdl.Rect {
+	i := textureIndex[r]
+	return &i
+}
+
 func init() {
 	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
+		panic(err)
+	}
+
+	if err := ttf.Init(); err != nil {
 		panic(err)
 	}
 
@@ -47,7 +57,6 @@ func init() {
 		panic(err)
 	}
 
-	//renderer.SetScale(2, 2)
 	textureAtlas, err = img.LoadTexture(renderer, "ui/assets/dungeon_tileset.png")
 	if err != nil {
 		fmt.Println(err)
@@ -91,19 +100,17 @@ func loadTextureIndex(filename string) {
 		tileIndexX := x
 		tileIndexY := y
 		tileRect := sdl.Rect{X: int32(tileIndexX), Y: int32(tileIndexY), W: 16, H: 16}
-		fmt.Println(tileRect)
 		textureIndex[tile.Rune] = tileRect
 	}
 }
 
 func (ui UI2d) Draw(level *game.Level) {
+	label := NewLabel("wkorande", renderer)
+
 	if centerX == -1 && centerY == -1 {
 		centerX = level.Player.Pos.X
 		centerY = level.Player.Pos.Y
 	}
-
-	//dx := level.Player.Pos.X - centerX
-	//dy := level.Player.Pos.Y - centerY
 
 	moveThreshold := 4
 	if level.Player.Pos.X > centerX+moveThreshold {
@@ -147,6 +154,9 @@ func (ui UI2d) Draw(level *game.Level) {
 		H: tileSize,
 	}
 	renderer.Copy(textureAtlas, &playerSrcRect, &playerDestRect)
+
+	label.Draw(game.Position{level.Player.Pos.X*tileSize + int(offsetX) - tileSize/2, level.Player.Pos.Y*tileSize + int(offsetY) - tileSize/2})
+
 	renderer.Present()
 }
 

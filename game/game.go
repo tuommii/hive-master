@@ -1,31 +1,16 @@
 package game
 
 import (
-	"bufio"
 	"math"
-	"os"
 	"sort"
+
+	"github.com/veandco/go-sdl2/sdl"
 )
 
 type GameUI interface {
 	Draw(*Level)
 	GetInput() *Input
-}
-
-type InputType int
-
-const (
-	None InputType = iota
-	Up
-	Down
-	Left
-	Right
-	Search
-	Quit
-)
-
-type Input struct {
-	Type InputType
+	GetTextureIndex(rune) *sdl.Rect
 }
 
 type Position struct {
@@ -58,89 +43,6 @@ const (
 	OpenChest   rune = 'o'
 )
 
-type Level struct {
-	Map    [][]Tile
-	Player Player
-	Debug  map[Position]bool
-}
-
-func LoadLevelFromFile(filename string) *Level {
-	file, err := os.Open(filename)
-	if err != nil {
-		panic(err)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-
-	levelLines := make([]string, 0)
-	cols := 0
-	rows := 0
-	for scanner.Scan() {
-		line := scanner.Text()
-		if len(line) > cols {
-			cols = len(line)
-		}
-		levelLines = append(levelLines, line)
-		rows++
-	}
-	level := &Level{}
-	level.Map = make([][]Tile, rows)
-	for i := range level.Map {
-		level.Map[i] = make([]Tile, cols)
-	}
-	for y := 0; y < rows; y++ {
-		line := levelLines[y]
-		for x := 0; x < len(line); x++ {
-			c := line[x]
-			var t Tile
-			switch c {
-			case ' ', '\t', '\r':
-				t.Rune = Blank
-			case '#':
-				t.Rune = Wall
-			case '.':
-				t.Rune = Floor
-			case '|':
-				t.Rune = ClosedDoor
-			case '/':
-				t.Rune = OpenDoor
-			case '*':
-				t.Rune = ClosedChest
-			case 'o':
-				t.Rune = OpenChest
-			default:
-				t.Rune = Blank
-			}
-			level.Map[y][x] = t
-		}
-	}
-	return level
-}
-
-func getNeighbors(level *Level, pos Position) []Position {
-	neighbors := make([]Position, 0, 4)
-	left := Position{pos.X - 1, pos.Y}
-	right := Position{pos.X + 1, pos.Y}
-	up := Position{pos.X, pos.Y - 1}
-	down := Position{pos.X, pos.Y + 1}
-
-	if canMove(left, level) {
-		neighbors = append(neighbors, left)
-	}
-	if canMove(right, level) {
-		neighbors = append(neighbors, right)
-	}
-	if canMove(up, level) {
-		neighbors = append(neighbors, up)
-	}
-	if canMove(down, level) {
-		neighbors = append(neighbors, down)
-	}
-
-	return neighbors
-}
-
 func bfs(ui GameUI, level *Level, startPos Position) {
 	frontier := make([]Position, 0, 8)
 	frontier = append(frontier, startPos)
@@ -159,7 +61,7 @@ func bfs(ui GameUI, level *Level, startPos Position) {
 	}
 }
 
-func astar(ui GameUI, level *Level, start Position, goal Position) {
+func astar(level *Level, start Position, goal Position) {
 	frontier := make(priorityArray, 0, 0)
 	frontier = append(frontier, priorityPos{start, 1})
 	cameFrom := make(map[Position]Position)
@@ -169,7 +71,6 @@ func astar(ui GameUI, level *Level, start Position, goal Position) {
 	for len(frontier) > 0 {
 		sort.Stable(frontier)
 		current := frontier[0]
-		//level.Debug[current.Position] = true
 		if current.Position == goal {
 			p := current.Position
 			for p != start {
@@ -191,60 +92,26 @@ func astar(ui GameUI, level *Level, start Position, goal Position) {
 				priority := newCost + xDist + yDist
 				frontier = append(frontier, priorityPos{next, priority})
 				cameFrom[next] = current.Position
-				//level.Debug[next] = true
 			}
 		}
 	}
 }
 
-func canMove(pos Position, level *Level) bool {
-	if level.Map[pos.Y][pos.X].Rune == Wall || level.Map[pos.Y][pos.X].Rune == ClosedDoor || level.Map[pos.Y][pos.X].Rune == ClosedChest {
-		return false
-	}
-	return true
-}
-
-func checkDoor(pos Position, level *Level) {
-	if level.Map[pos.Y][pos.X].Rune == ClosedDoor {
-		level.Map[pos.Y][pos.X].Rune = OpenDoor
-	} else if level.Map[pos.Y][pos.X].Rune == ClosedChest {
-		level.Map[pos.Y][pos.X].Rune = OpenChest
-	}
-}
-
-func handleInput(level *Level, input *Input) {
-	toPos := level.Player.Pos
-	switch input.Type {
-	case Up:
-		toPos.Y--
-	case Down:
-		toPos.Y++
-	case Left:
-		toPos.X--
-	case Right:
-		toPos.X++
-	}
-	if canMove(toPos, level) {
-		level.Player.Move(toPos)
-	} else {
-		checkDoor(toPos, level)
-	}
-}
-
-func Run(ui GameUI) {
+func Run(gameUI GameUI) {
 	level := LoadLevelFromFile("game/maps/level1.map")
+	level.Player = NewPlayer("name", 5.0, Position{5, 5}, gameUI.GetTextureIndex('@'))
 	level.Debug = make(map[Position]bool)
 	level.Player.Pos.X = 5
 	level.Player.Pos.Y = 5
 	for {
-		ui.Draw(level)
-		input := ui.GetInput()
+		gameUI.Draw(level)
+		input := gameUI.GetInput()
 		if input.Type == Quit {
 			return
 		}
 		if input.Type == Search {
 			level.Debug = make(map[Position]bool)
-			astar(ui, level, level.Player.Pos, Position{9, 4})
+			astar(level, level.Player.Pos, Position{9, 4})
 		}
 		handleInput(level, input)
 	}
