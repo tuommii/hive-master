@@ -136,7 +136,7 @@ func get_some_key(m map[string]ftapi.UserData) string {
 
 func Run(gameUI GameUI) {
 	level := LoadLevelFromFile("game/maps/level1.map")
-	level.Player = NewPlayer("wkorande", 5.0, Position{27, 5}, gameUI.GetTextureAtlas(), gameUI.GetTextureIndex('@'))
+	level.Player = NewPlayer("wkorande", 5.0, Position{23, 9}, gameUI.GetTextureAtlas(), gameUI.GetTextureIndex('@'))
 	gameUI.NewCharacterLabel(&level.Player.Character)
 
 	userData, _ := ftapi.LoadUserData("game/users.json")
