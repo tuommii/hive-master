@@ -18,6 +18,7 @@ func NewEnemy(name string, level float64, pos Position, texture *sdl.Texture, te
 	newEnemy.Name = name
 	newEnemy.Level = level
 	newEnemy.Pos = pos
+	newEnemy.Health = 100
 	newEnemy.texture = texture
 	newEnemy.TextureRect = *textureRect
 	return &newEnemy
@@ -49,10 +50,9 @@ func (enemy *Enemy) Update(level *Level) {
 			return
 		}
 	}
-	if enemy.distanceToCharacter(&level.Player.Character) < 5 {
+	if enemy.distanceToCharacter(&level.Player.Character) < 5 && !enemy.Aggressive {
+		fmt.Println(enemy.Name, "noticed you!")
 		enemy.Aggressive = true
-	} else {
-		enemy.Aggressive = false
 	}
 	if !enemy.Aggressive && enemy.path == nil {
 		enemy.path = astar(level, enemy.Pos, getRandomPositionInsideCircle(10, enemy.Pos))
@@ -61,13 +61,12 @@ func (enemy *Enemy) Update(level *Level) {
 		enemy.path = astar(level, enemy.Pos, level.Player.Pos)
 	}
 	if enemy.path != nil && len(enemy.path) != 0 {
-		for _, p := range enemy.path {
-			level.Debug[p] = true
-		}
+		//for _, p := range enemy.path {
+		//	level.Debug[p] = true
+		//}
 
 		enemy.Move(enemy.path[0], level)
 		if enemy.Pos == enemy.path[len(enemy.path)-1] {
-			fmt.Println("enemy reached end of path")
 			enemy.path = nil
 			return
 		}

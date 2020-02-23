@@ -19,7 +19,6 @@ type UI2d struct {
 
 const (
 	winWidth, winHeight = 1920, 1080
-	tileSize            = 48
 )
 
 var renderer *sdl.Renderer
@@ -33,6 +32,7 @@ var centerY int
 var offsetX int32
 var offsetY int32
 var characterLabels map[*game.Character]Label
+var tileSize int32 = 48
 
 func (ui *UI2d) GetTextureIndex(r rune) *sdl.Rect {
 	i := textureIndex[r]
@@ -132,16 +132,16 @@ func (ui UI2d) Draw(level *game.Level) {
 		centerY--
 	}
 
-	offsetX = int32((winWidth / 2) - centerX*tileSize)
-	offsetY = int32((winHeight / 2) - centerY*tileSize)
+	offsetX = int32((winWidth / 2) - int32(centerX)*tileSize)
+	offsetY = int32((winHeight / 2) - int32(centerY)*tileSize)
 	renderer.Clear()
 	for y, row := range level.Map {
 		for x, tile := range row {
 			if tile.Rune != game.Blank {
 				srcRect := textureIndex[level.Map[y][x].Rune]
 				destRect := sdl.Rect{
-					X: int32(x*tileSize) + offsetX,
-					Y: int32(y*tileSize) + offsetY,
+					X: int32(x*int(tileSize)) + offsetX,
+					Y: int32(y*int(tileSize)) + offsetY,
 					W: tileSize,
 					H: tileSize,
 				}
@@ -151,14 +151,18 @@ func (ui UI2d) Draw(level *game.Level) {
 				} else {
 					textureAtlas.SetColorMod(255, 255, 255)
 				}
+				floorRect := textureIndex[game.Floor]
+				renderer.Copy(textureAtlas, &floorRect, &destRect)
 				renderer.Copy(textureAtlas, &srcRect, &destRect)
 			}
 		}
 	}
 	for _, enemy := range level.Enemies {
-		enemy.Draw(renderer, tileSize, offsetX, offsetY)
-		label := characterLabels[&enemy.Character]
-		label.Draw(enemy.Pos)
+		if !enemy.IsDead {
+			enemy.Draw(renderer, tileSize, offsetX, offsetY)
+			label := characterLabels[&enemy.Character]
+			label.Draw(enemy.Pos)
+		}
 	}
 	level.Player.Draw(renderer, tileSize, offsetX, offsetY)
 	label := characterLabels[&level.Player.Character]
@@ -187,6 +191,12 @@ func (ui *UI2d) GetInput() *game.Input {
 			input.Type = game.Right
 		} else if keyboardState[sdl.SCANCODE_SPACE] == 1 && prevKeyboardState[sdl.SCANCODE_SPACE] == 0 {
 			input.Type = game.Search
+		} else if keyboardState[sdl.SCANCODE_KP_PLUS] == 1 && prevKeyboardState[sdl.SCANCODE_KP_PLUS] == 0 {
+			input.Type = game.ZoomIn
+			tileSize++
+		} else if keyboardState[sdl.SCANCODE_KP_MINUS] == 1 && prevKeyboardState[sdl.SCANCODE_KP_MINUS] == 0 {
+			input.Type = game.ZoomOut
+			tileSize--
 		}
 		for i, v := range keyboardState {
 			prevKeyboardState[i] = v

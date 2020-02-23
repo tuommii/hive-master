@@ -1,5 +1,7 @@
 package game
 
+import "fmt"
+
 type InputType int
 
 type Input struct {
@@ -13,6 +15,8 @@ const (
 	Left
 	Right
 	Search
+	ZoomIn
+	ZoomOut
 	Quit
 )
 
@@ -31,6 +35,17 @@ func handleInput(level *Level, input *Input) {
 	if canMove(toPos, level) {
 		level.Player.Move(toPos, level)
 	} else {
+		exists, e := hasEnemy(toPos, level)
+		if exists {
+			damageAmount := level.Player.Level * 5
+			fmt.Println(level.Player.Name, "attacked", e.Name, "for", damageAmount, "damage!")
+			e.Health -= int(damageAmount)
+			if e.Health <= 0 {
+				fmt.Println(e.Name, "is dead.")
+				e.IsDead = true
+			}
+		}
 		checkDoor(toPos, level)
 	}
+
 }

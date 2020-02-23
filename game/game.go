@@ -4,6 +4,8 @@ import (
 	"math"
 	"sort"
 
+	"github.com/wehard/ftapi"
+
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -125,20 +127,40 @@ func astar(level *Level, start Position, goal Position) Path {
 	return nil
 }
 
+func get_some_key(m map[string]ftapi.UserData) string {
+	for k := range m {
+		return k
+	}
+	return ""
+}
+
 func Run(gameUI GameUI) {
 	level := LoadLevelFromFile("game/maps/level1.map")
-	level.Player = NewPlayer("wkorande", 5.0, Position{5, 5}, gameUI.GetTextureAtlas(), gameUI.GetTextureIndex('@'))
+	level.Player = NewPlayer("wkorande", 5.0, Position{27, 5}, gameUI.GetTextureAtlas(), gameUI.GetTextureIndex('@'))
 	gameUI.NewCharacterLabel(&level.Player.Character)
 
+	userData, _ := ftapi.LoadUserData("game/users.json")
 	level.Enemies = make([]*Enemy, 0)
-	enemy := NewEnemy("bocal", 1.0, Position{5, 13}, gameUI.GetTextureAtlas(), gameUI.GetTextureIndex('E'))
-	level.Enemies = append(level.Enemies, enemy)
-	gameUI.NewCharacterLabel(&enemy.Character)
+	for i := 0; i < 10; i++ {
+		//index := rand.Intn(len(userData))
+		user := userData[get_some_key(userData)]
+		enemy := NewEnemy(user.Login, user.CursusUsers[0].Level, Position{5, 13}, gameUI.GetTextureAtlas(), gameUI.GetTextureIndex('E'))
+		level.Enemies = append(level.Enemies, enemy)
+		gameUI.NewCharacterLabel(&enemy.Character)
+
+	}
 
 	for {
+		for i := len(level.Enemies) - 1; i >= 0; i-- {
+			if level.Enemies[i].IsDead {
+				level.Enemies = append(level.Enemies[:i], level.Enemies[i+1:]...)
+			}
+		}
 		level.Debug = make(map[Position]bool)
 		for _, e := range level.Enemies {
-			e.Update(level)
+			if !e.IsDead {
+				e.Update(level)
+			}
 		}
 		gameUI.Draw(level)
 		input := gameUI.GetInput()

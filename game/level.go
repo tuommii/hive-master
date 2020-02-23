@@ -2,7 +2,6 @@ package game
 
 import (
 	"bufio"
-	"fmt"
 	"math"
 	"math/rand"
 	"os"
@@ -12,6 +11,8 @@ type Level struct {
 	Map     [][]Tile
 	Player  *Player
 	Enemies []*Enemy
+	Width   int
+	Height  int
 	Debug   map[Position]bool
 }
 
@@ -36,6 +37,8 @@ func LoadLevelFromFile(filename string) *Level {
 		rows++
 	}
 	level := &Level{}
+	level.Width = cols
+	level.Height = rows
 	level.Map = make([][]Tile, rows)
 	for i := range level.Map {
 		level.Map[i] = make([]Tile, cols)
@@ -75,7 +78,6 @@ func checkLevelWallCorners(level *Level) {
 		for x, _ := range rows {
 			if isWall(level, Position{x, y}) {
 				flags := getWallNeighbors(level, Position{x, y})
-				fmt.Println(Position{x, y}, ",", flags)
 				if flags == 10 {
 					level.Map[y][x].Rune = WallSW
 				} else if flags == 12 {
@@ -92,6 +94,8 @@ func checkLevelWallCorners(level *Level) {
 					level.Map[y][x].Rune = WallS
 				} else if flags == 11 {
 					level.Map[y][x].Rune = WallSWE
+				} else if flags == 15 {
+					level.Map[y][x].Rune = WallSWE
 				}
 
 			}
@@ -106,19 +110,16 @@ func getWallNeighbors(level *Level, pos Position) uint8 {
 	up := Position{pos.X, pos.Y - 1}
 	down := Position{pos.X, pos.Y + 1}
 
-	width := 35
-	height := 22
-
-	if left.X >= 0 && left.X < width && isWall(level, left) {
+	if left.X >= 0 && left.X < level.Width && isWall(level, left) {
 		flags |= 1 << 0
 	}
-	if right.X >= 0 && right.X < width && isWall(level, right) {
+	if right.X >= 0 && right.X < level.Width && isWall(level, right) {
 		flags |= 1 << 1
 	}
-	if up.Y >= 0 && up.Y < height && isWall(level, up) {
+	if up.Y >= 0 && up.Y < level.Height && isWall(level, up) {
 		flags |= 1 << 2
 	}
-	if down.Y >= 0 && down.Y < height && isWall(level, down) {
+	if down.Y >= 0 && down.Y < level.Height && isWall(level, down) {
 		flags |= 1 << 3
 	}
 
@@ -142,8 +143,21 @@ func isWall(level *Level, pos Position) bool {
 	return false
 }
 
+func hasEnemy(pos Position, level *Level) (bool, *Enemy) {
+	for _, e := range level.Enemies {
+		if pos == e.Pos {
+			return true, e
+		}
+	}
+	return false, nil
+}
+
 func canMove(pos Position, level *Level) bool {
 	if isWall(level, pos) || level.Map[pos.Y][pos.X].Rune == ClosedDoor || level.Map[pos.Y][pos.X].Rune == ClosedChest {
+		return false
+	}
+	exists, _ := hasEnemy(pos, level)
+	if exists {
 		return false
 	}
 	return true

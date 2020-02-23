@@ -15,6 +15,7 @@ type Character struct {
 	Name        string
 	Level       float64
 	Health      int
+	IsDead      bool
 	texture     *sdl.Texture
 	TextureRect sdl.Rect
 }
