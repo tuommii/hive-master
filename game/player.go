@@ -15,6 +15,7 @@ func NewPlayer(name string, level float64, pos Position, texture *sdl.Texture, t
 	player.texture = texture
 	player.TextureRect = *textureRect
 	player.Pos = pos
+	player.Health = 100
 	return &player
 }
 

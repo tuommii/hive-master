@@ -41,29 +41,40 @@ func (enemy *Enemy) distanceToCharacter(character *Character) int {
 }
 
 func (enemy *Enemy) Update(level *Level) {
+	for _, pos := range getNeighbors(level, enemy.Pos) {
+		if pos == level.Player.Pos {
+			damage := int(enemy.Level)
+			fmt.Println(enemy.Name, "attacked", level.Player.Name, "for", damage, "damage!")
+			return
+		}
+	}
 	if enemy.distanceToCharacter(&level.Player.Character) < 5 {
 		enemy.Aggressive = true
+	} else {
+		enemy.Aggressive = false
 	}
 	if !enemy.Aggressive && enemy.path == nil {
 		enemy.path = astar(level, enemy.Pos, getRandomPositionInsideCircle(10, enemy.Pos))
-	} else if enemy.Aggressive {
-		enemy.path = astar(level, enemy.Pos, level.Player.Pos)
-		if enemy.path == nil {
-			enemy.Aggressive = false
-		}
 	}
-	if enemy.path != nil {
+	if enemy.Aggressive {
+		enemy.path = astar(level, enemy.Pos, level.Player.Pos)
+	}
+	if enemy.path != nil && len(enemy.path) != 0 {
 		for _, p := range enemy.path {
 			level.Debug[p] = true
 		}
+
+		enemy.Move(enemy.path[0], level)
 		if enemy.Pos == enemy.path[len(enemy.path)-1] {
 			fmt.Println("enemy reached end of path")
 			enemy.path = nil
 			return
 		}
-		enemy.Move(enemy.path[0], level)
 		if len(enemy.path) > 1 {
 			enemy.path = enemy.path[1:]
+			if len(enemy.path) == 0 {
+				enemy.path = nil
+			}
 		}
 	}
 }

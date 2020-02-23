@@ -14,6 +14,7 @@ type Character struct {
 	Pos         Position
 	Name        string
 	Level       float64
+	Health      int
 	texture     *sdl.Texture
 	TextureRect sdl.Rect
 }
