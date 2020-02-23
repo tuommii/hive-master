@@ -2,6 +2,7 @@ package game
 
 import (
 	"bufio"
+	"fmt"
 	"math"
 	"math/rand"
 	"os"
@@ -65,11 +66,84 @@ func LoadLevelFromFile(filename string) *Level {
 			level.Map[y][x] = t
 		}
 	}
+	checkLevelWallCorners(level)
 	return level
 }
 
+func checkLevelWallCorners(level *Level) {
+	for y, rows := range level.Map {
+		for x, _ := range rows {
+			if isWall(level, Position{x, y}) {
+				flags := getWallNeighbors(level, Position{x, y})
+				fmt.Println(Position{x, y}, ",", flags)
+				if flags == 10 {
+					level.Map[y][x].Rune = WallSW
+				} else if flags == 12 {
+					level.Map[y][x].Rune = WallNS
+				} else if flags == 6 {
+					level.Map[y][x].Rune = WallNW
+				} else if flags == 5 {
+					level.Map[y][x].Rune = WallNE
+				} else if flags == 9 {
+					level.Map[y][x].Rune = WallSE
+				} else if flags == 4 {
+					level.Map[y][x].Rune = WallN
+				} else if flags == 8 {
+					level.Map[y][x].Rune = WallS
+				} else if flags == 11 {
+					level.Map[y][x].Rune = WallSWE
+				}
+
+			}
+		}
+	}
+}
+
+func getWallNeighbors(level *Level, pos Position) uint8 {
+	var flags uint8
+	left := Position{pos.X - 1, pos.Y}
+	right := Position{pos.X + 1, pos.Y}
+	up := Position{pos.X, pos.Y - 1}
+	down := Position{pos.X, pos.Y + 1}
+
+	width := 35
+	height := 22
+
+	if left.X >= 0 && left.X < width && isWall(level, left) {
+		flags |= 1 << 0
+	}
+	if right.X >= 0 && right.X < width && isWall(level, right) {
+		flags |= 1 << 1
+	}
+	if up.Y >= 0 && up.Y < height && isWall(level, up) {
+		flags |= 1 << 2
+	}
+	if down.Y >= 0 && down.Y < height && isWall(level, down) {
+		flags |= 1 << 3
+	}
+
+	return flags
+}
+
+func isWall(level *Level, pos Position) bool {
+	if level.Map[pos.Y][pos.X].Rune == Wall ||
+		level.Map[pos.Y][pos.X].Rune == WallSW ||
+		level.Map[pos.Y][pos.X].Rune == WallNW ||
+		level.Map[pos.Y][pos.X].Rune == WallNS ||
+		level.Map[pos.Y][pos.X].Rune == WallNE ||
+		level.Map[pos.Y][pos.X].Rune == WallSE ||
+		level.Map[pos.Y][pos.X].Rune == WallN ||
+		level.Map[pos.Y][pos.X].Rune == WallS ||
+		level.Map[pos.Y][pos.X].Rune == WallE ||
+		level.Map[pos.Y][pos.X].Rune == WallW ||
+		level.Map[pos.Y][pos.X].Rune == WallSWE {
+		return true
+	}
+	return false
+}
+
 func canMove(pos Position, level *Level) bool {
-	if level.Map[pos.Y][pos.X].Rune == Wall || level.Map[pos.Y][pos.X].Rune == ClosedDoor || level.Map[pos.Y][pos.X].Rune == ClosedChest {
+	if isWall(level, pos) || level.Map[pos.Y][pos.X].Rune == ClosedDoor || level.Map[pos.Y][pos.X].Rune == ClosedChest {
 		return false
 	}
 	return true
@@ -83,7 +157,8 @@ func checkDoor(pos Position, level *Level) {
 	}
 }
 
-func getNeighbors(level *Level, pos Position) []Position {
+func getNeighbors(level *Level, pos Position) ([]Position, uint8) {
+	var flags uint8
 	neighbors := make([]Position, 0, 4)
 	left := Position{pos.X - 1, pos.Y}
 	right := Position{pos.X + 1, pos.Y}
@@ -92,18 +167,22 @@ func getNeighbors(level *Level, pos Position) []Position {
 
 	if canMove(left, level) {
 		neighbors = append(neighbors, left)
+		flags |= 1 << 0
 	}
 	if canMove(right, level) {
 		neighbors = append(neighbors, right)
+		flags |= 1 << 1
 	}
 	if canMove(up, level) {
 		neighbors = append(neighbors, up)
+		flags |= 1 << 2
 	}
 	if canMove(down, level) {
 		neighbors = append(neighbors, down)
+		flags |= 1 << 3
 	}
 
-	return neighbors
+	return neighbors, flags
 }
 
 func getRandomPositionInsideCircle(radius int, pos Position) Position {

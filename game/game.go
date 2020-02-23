@@ -38,6 +38,16 @@ func (p priorityArray) Less(i, j int) bool { return p[i].priority < p[j].priorit
 const (
 	Blank       rune = ' '
 	Wall        rune = '#'
+	WallSW      rune = 'F'
+	WallNS      rune = 'I'
+	WallNW      rune = 'L'
+	WallNE      rune = 'J'
+	WallSE      rune = 'T'
+	WallN       rune = 'N'
+	WallS       rune = 'S'
+	WallE       rune = 'E'
+	WallW       rune = 'W'
+	WallSWE     rune = 'X'
 	Floor       rune = '.'
 	ClosedDoor  rune = '|'
 	OpenDoor    rune = '/'
@@ -56,7 +66,8 @@ func bfs(ui GameUI, level *Level, startPos Position) {
 	for len(frontier) > 0 {
 		current := frontier[0]
 		frontier = frontier[1:]
-		for _, next := range getNeighbors(level, current) {
+		ns, _ := getNeighbors(level, current)
+		for _, next := range ns {
 			if !visited[next] {
 				frontier = append(frontier, next)
 				visited[next] = true
@@ -97,7 +108,8 @@ func astar(level *Level, start Position, goal Position) Path {
 		}
 
 		frontier = frontier[1:]
-		for _, next := range getNeighbors(level, current.Position) {
+		ns, _ := getNeighbors(level, current.Position)
+		for _, next := range ns {
 			newCost := costSoFar[current.Position] + 1
 			_, exists := costSoFar[next]
 			if !exists || newCost < costSoFar[next] {

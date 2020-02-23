@@ -68,7 +68,7 @@ func init() {
 		panic(err)
 	}
 
-	textureAtlas, err = img.LoadTexture(renderer, "ui/assets/dungeon_tileset.png")
+	textureAtlas, err = img.LoadTexture(renderer, "ui/assets/dungeon.png")
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -111,7 +111,7 @@ func loadTextureIndex(filename string) {
 		}
 		tileIndexX := x
 		tileIndexY := y
-		tileRect := sdl.Rect{X: int32(tileIndexX), Y: int32(tileIndexY), W: 16, H: 16}
+		tileRect := sdl.Rect{X: int32(tileIndexX * 16), Y: int32(tileIndexY * 16), W: 16, H: 16}
 		textureIndex[tile.Rune] = tileRect
 	}
 }

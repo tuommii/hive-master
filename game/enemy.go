@@ -41,7 +41,8 @@ func (enemy *Enemy) distanceToCharacter(character *Character) int {
 }
 
 func (enemy *Enemy) Update(level *Level) {
-	for _, pos := range getNeighbors(level, enemy.Pos) {
+	ns, _ := getNeighbors(level, enemy.Pos)
+	for _, pos := range ns {
 		if pos == level.Player.Pos {
 			damage := int(enemy.Level)
 			fmt.Println(enemy.Name, "attacked", level.Player.Name, "for", damage, "damage!")
