@@ -14,6 +14,7 @@ const (
 	Down
 	Left
 	Right
+	Action
 	Search
 	ZoomIn
 	ZoomOut
@@ -31,6 +32,11 @@ func handleInput(level *Level, input *Input) {
 		toPos.X--
 	case Right:
 		toPos.X++
+	case Action:
+		ns, _ := getNeighbors(level, level.Player.Pos)
+		for _, n := range ns {
+			checkDoor(n, level)
+		}
 	}
 	if canMove(toPos, level) {
 		level.Player.Move(toPos, level)

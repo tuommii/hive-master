@@ -24,7 +24,7 @@ const (
 var renderer *sdl.Renderer
 var window *sdl.Window
 var textureAtlas *sdl.Texture
-var textureIndex map[rune]sdl.Rect
+var textureIndex map[game.TileType]sdl.Rect
 var keyboardState []uint8
 var prevKeyboardState []uint8
 var centerX int
@@ -32,10 +32,10 @@ var centerY int
 var offsetX int32
 var offsetY int32
 var characterLabels map[*game.Character]Label
-var tileSize int32 = 48
+var tileSize int32 = 32
 
-func (ui *UI2d) GetTextureIndex(r rune) *sdl.Rect {
-	i := textureIndex[r]
+func (ui *UI2d) GetTextureIndex(tileType game.TileType) *sdl.Rect {
+	i := textureIndex[tileType]
 	return &i
 }
 
@@ -93,12 +93,12 @@ func loadTextureIndex(filename string) {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
-	textureIndex = make(map[rune]sdl.Rect)
+	textureIndex = make(map[game.TileType]sdl.Rect)
 	for scanner.Scan() {
 		line := scanner.Text()
 		line = strings.TrimSpace(line)
 		var tile game.Tile
-		tile.Rune = rune(line[0])
+		tile.TileType = getTileType(rune(line[0]))
 		xy := line[1:]
 		split := strings.Split(xy, ",")
 		x, err := strconv.ParseInt(strings.TrimSpace(split[0]), 10, 64)
@@ -109,11 +109,23 @@ func loadTextureIndex(filename string) {
 		if err != nil {
 			panic(err)
 		}
+		w, err := strconv.ParseInt(strings.TrimSpace(split[2]), 10, 64)
+		if err != nil {
+			panic(err)
+		}
+		h, err := strconv.ParseInt(strings.TrimSpace(split[3]), 10, 64)
+		if err != nil {
+			panic(err)
+		}
 		tileIndexX := x
 		tileIndexY := y
-		tileRect := sdl.Rect{X: int32(tileIndexX * 16), Y: int32(tileIndexY * 16), W: 16, H: 16}
-		textureIndex[tile.Rune] = tileRect
+		tileRect := sdl.Rect{X: int32(tileIndexX * 16), Y: int32(tileIndexY * 16), W: int32(w), H: int32(h)}
+		textureIndex[tile.TileType] = tileRect
 	}
+}
+
+func getTileType(r rune) game.TileType {
+	return game.TileType(r)
 }
 
 func (ui UI2d) Draw(level *game.Level) {
@@ -137,8 +149,8 @@ func (ui UI2d) Draw(level *game.Level) {
 	renderer.Clear()
 	for y, row := range level.Map {
 		for x, tile := range row {
-			if tile.Rune != game.Blank {
-				srcRect := textureIndex[level.Map[y][x].Rune]
+			if tile.TileType != game.Blank {
+				srcRect := textureIndex[level.Map[y][x].TileType]
 				destRect := sdl.Rect{
 					X: int32(x*int(tileSize)) + offsetX,
 					Y: int32(y*int(tileSize)) + offsetY,
@@ -190,7 +202,7 @@ func (ui *UI2d) GetInput() *game.Input {
 		} else if keyboardState[sdl.SCANCODE_RIGHT] == 1 && prevKeyboardState[sdl.SCANCODE_RIGHT] == 0 {
 			input.Type = game.Right
 		} else if keyboardState[sdl.SCANCODE_SPACE] == 1 && prevKeyboardState[sdl.SCANCODE_SPACE] == 0 {
-			input.Type = game.Search
+			input.Type = game.Action
 		} else if keyboardState[sdl.SCANCODE_KP_PLUS] == 1 && prevKeyboardState[sdl.SCANCODE_KP_PLUS] == 0 {
 			input.Type = game.ZoomIn
 			tileSize++

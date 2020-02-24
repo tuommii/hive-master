@@ -12,7 +12,7 @@ import (
 type GameUI interface {
 	Draw(*Level)
 	GetInput() *Input
-	GetTextureIndex(rune) *sdl.Rect
+	GetTextureIndex(TileType) *sdl.Rect
 	GetTextureAtlas() *sdl.Texture
 	NewCharacterLabel(character *Character)
 }
@@ -22,8 +22,10 @@ type Position struct {
 	Y int
 }
 
+type TileType rune
+
 type Tile struct {
-	Rune rune
+	TileType TileType
 }
 
 type priorityPos struct {
@@ -38,23 +40,27 @@ func (p priorityArray) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 func (p priorityArray) Less(i, j int) bool { return p[i].priority < p[j].priority }
 
 const (
-	Blank       rune = ' '
-	Wall        rune = '#'
-	WallSW      rune = 'F'
-	WallNS      rune = 'I'
-	WallNW      rune = 'L'
-	WallNE      rune = 'J'
-	WallSE      rune = 'T'
-	WallN       rune = 'N'
-	WallS       rune = 'S'
-	WallE       rune = 'E'
-	WallW       rune = 'W'
-	WallSWE     rune = 'X'
-	Floor       rune = '.'
-	ClosedDoor  rune = '|'
-	OpenDoor    rune = '/'
-	ClosedChest rune = '*'
-	OpenChest   rune = 'o'
+	Blank       TileType = ' '
+	Wall        TileType = '#'
+	WallSW      TileType = 'F'
+	WallNS      TileType = 'I'
+	WallNW      TileType = 'L'
+	WallNE      TileType = 'J'
+	WallSE      TileType = 'T'
+	WallN       TileType = 'N'
+	WallS       TileType = 'S'
+	WallE       TileType = 'E'
+	WallW       TileType = 'W'
+	WallSWE     TileType = 'X'
+	WallNSW     TileType = 'K'
+	WallNSE     TileType = 'Y'
+	Floor       TileType = '.'
+	ClosedDoorV TileType = '|'
+	OpenDoorV   TileType = '/'
+	ClosedDoorH TileType = '-'
+	OpenDoorH   TileType = '\\'
+	ClosedChest TileType = '*'
+	OpenChest   TileType = 'o'
 )
 
 type Path []Position
@@ -142,9 +148,9 @@ func Run(gameUI GameUI) {
 	userData, _ := ftapi.LoadUserData("game/users.json")
 	level.Enemies = make([]*Enemy, 0)
 	for i := 0; i < 10; i++ {
-		//index := rand.Intn(len(userData))
 		user := userData[get_some_key(userData)]
-		enemy := NewEnemy(user.Login, user.CursusUsers[0].Level, Position{5, 13}, gameUI.GetTextureAtlas(), gameUI.GetTextureIndex('E'))
+		pos := level.getRandomPosition()
+		enemy := NewEnemy(user.Login, user.CursusUsers[0].Level, pos, gameUI.GetTextureAtlas(), gameUI.GetTextureIndex('E'))
 		level.Enemies = append(level.Enemies, enemy)
 		gameUI.NewCharacterLabel(&enemy.Character)
 

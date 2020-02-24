@@ -50,27 +50,47 @@ func LoadLevelFromFile(filename string) *Level {
 			var t Tile
 			switch c {
 			case ' ', '\t', '\r':
-				t.Rune = Blank
+				t.TileType = Blank
 			case '#':
-				t.Rune = Wall
+				t.TileType = Wall
 			case '.':
-				t.Rune = Floor
+				t.TileType = Floor
 			case '|':
-				t.Rune = ClosedDoor
+				t.TileType = ClosedDoorV
 			case '/':
-				t.Rune = OpenDoor
+				t.TileType = OpenDoorV
+			case '-':
+				t.TileType = ClosedDoorH
+			case '\\':
+				t.TileType = ClosedDoorH
 			case '*':
-				t.Rune = ClosedChest
+				t.TileType = ClosedChest
 			case 'o':
-				t.Rune = OpenChest
+				t.TileType = OpenChest
 			default:
-				t.Rune = Blank
+				t.TileType = Blank
 			}
 			level.Map[y][x] = t
 		}
 	}
 	checkLevelWallCorners(level)
+	checkLevelDoors(level)
 	return level
+}
+
+func checkLevelDoors(level *Level) {
+	for y, rows := range level.Map {
+		for x, _ := range rows {
+			if isDoor(level, Position{x, y}) {
+				_, flags := getNeighbors(level, Position{x, y})
+				if flags == 12 {
+					level.Map[y][x].TileType = ClosedDoorH
+				} else if flags == 11 {
+					level.Map[y][x].TileType = ClosedDoorH
+				}
+			}
+		}
+	}
 }
 
 func checkLevelWallCorners(level *Level) {
@@ -79,23 +99,27 @@ func checkLevelWallCorners(level *Level) {
 			if isWall(level, Position{x, y}) {
 				flags := getWallNeighbors(level, Position{x, y})
 				if flags == 10 {
-					level.Map[y][x].Rune = WallSW
+					level.Map[y][x].TileType = WallSW
 				} else if flags == 12 {
-					level.Map[y][x].Rune = WallNS
+					level.Map[y][x].TileType = WallNS
 				} else if flags == 6 {
-					level.Map[y][x].Rune = WallNW
+					level.Map[y][x].TileType = WallNW
 				} else if flags == 5 {
-					level.Map[y][x].Rune = WallNE
+					level.Map[y][x].TileType = WallNE
 				} else if flags == 9 {
-					level.Map[y][x].Rune = WallSE
+					level.Map[y][x].TileType = WallSE
 				} else if flags == 4 {
-					level.Map[y][x].Rune = WallN
+					level.Map[y][x].TileType = WallN
 				} else if flags == 8 {
-					level.Map[y][x].Rune = WallS
+					level.Map[y][x].TileType = WallS
 				} else if flags == 11 {
-					level.Map[y][x].Rune = WallSWE
+					level.Map[y][x].TileType = WallSWE
 				} else if flags == 15 {
-					level.Map[y][x].Rune = WallSWE
+					level.Map[y][x].TileType = WallSWE
+				} else if flags == 14 {
+					level.Map[y][x].TileType = WallNSW
+				} else if flags == 13 {
+					level.Map[y][x].TileType = WallNSE
 				}
 
 			}
@@ -127,17 +151,37 @@ func getWallNeighbors(level *Level, pos Position) uint8 {
 }
 
 func isWall(level *Level, pos Position) bool {
-	if level.Map[pos.Y][pos.X].Rune == Wall ||
-		level.Map[pos.Y][pos.X].Rune == WallSW ||
-		level.Map[pos.Y][pos.X].Rune == WallNW ||
-		level.Map[pos.Y][pos.X].Rune == WallNS ||
-		level.Map[pos.Y][pos.X].Rune == WallNE ||
-		level.Map[pos.Y][pos.X].Rune == WallSE ||
-		level.Map[pos.Y][pos.X].Rune == WallN ||
-		level.Map[pos.Y][pos.X].Rune == WallS ||
-		level.Map[pos.Y][pos.X].Rune == WallE ||
-		level.Map[pos.Y][pos.X].Rune == WallW ||
-		level.Map[pos.Y][pos.X].Rune == WallSWE {
+	if pos.X < 0 || pos.X > level.Width-1 {
+		//fmt.Println("X position out of level bounds!", "pos", pos, "width", level.Width)
+		return true
+	}
+	if pos.Y < 0 || pos.Y > level.Height-1 {
+		//fmt.Println("Y position out of level bounds!", "pos", pos, "height", level.Height)
+		return true
+	}
+	if level.Map[pos.Y][pos.X].TileType == Wall ||
+		level.Map[pos.Y][pos.X].TileType == WallSW ||
+		level.Map[pos.Y][pos.X].TileType == WallNW ||
+		level.Map[pos.Y][pos.X].TileType == WallNS ||
+		level.Map[pos.Y][pos.X].TileType == WallNE ||
+		level.Map[pos.Y][pos.X].TileType == WallSE ||
+		level.Map[pos.Y][pos.X].TileType == WallN ||
+		level.Map[pos.Y][pos.X].TileType == WallS ||
+		level.Map[pos.Y][pos.X].TileType == WallE ||
+		level.Map[pos.Y][pos.X].TileType == WallW ||
+		level.Map[pos.Y][pos.X].TileType == WallSWE ||
+		level.Map[pos.Y][pos.X].TileType == WallNSE ||
+		level.Map[pos.Y][pos.X].TileType == WallNSW {
+		return true
+	}
+	return false
+}
+
+func isDoor(level *Level, pos Position) bool {
+	if level.Map[pos.Y][pos.X].TileType == ClosedDoorV ||
+		level.Map[pos.Y][pos.X].TileType == OpenDoorV ||
+		level.Map[pos.Y][pos.X].TileType == ClosedDoorH ||
+		level.Map[pos.Y][pos.X].TileType == OpenDoorH {
 		return true
 	}
 	return false
@@ -153,7 +197,10 @@ func hasEnemy(pos Position, level *Level) (bool, *Enemy) {
 }
 
 func canMove(pos Position, level *Level) bool {
-	if isWall(level, pos) || level.Map[pos.Y][pos.X].Rune == ClosedDoor || level.Map[pos.Y][pos.X].Rune == ClosedChest {
+	if isWall(level, pos) ||
+		level.Map[pos.Y][pos.X].TileType == ClosedDoorV ||
+		level.Map[pos.Y][pos.X].TileType == ClosedDoorH ||
+		level.Map[pos.Y][pos.X].TileType == ClosedChest {
 		return false
 	}
 	exists, _ := hasEnemy(pos, level)
@@ -164,11 +211,17 @@ func canMove(pos Position, level *Level) bool {
 }
 
 func checkDoor(pos Position, level *Level) {
-	if level.Map[pos.Y][pos.X].Rune == ClosedDoor {
-		level.Map[pos.Y][pos.X].Rune = OpenDoor
-	} else if level.Map[pos.Y][pos.X].Rune == ClosedChest {
-		level.Map[pos.Y][pos.X].Rune = OpenChest
+	if level.Map[pos.Y][pos.X].TileType == ClosedDoorV {
+		level.Map[pos.Y][pos.X].TileType = OpenDoorV
+	} else if level.Map[pos.Y][pos.X].TileType == OpenDoorV {
+		level.Map[pos.Y][pos.X].TileType = ClosedDoorV
 	}
+	if level.Map[pos.Y][pos.X].TileType == ClosedDoorH {
+		level.Map[pos.Y][pos.X].TileType = OpenDoorH
+	} else if level.Map[pos.Y][pos.X].TileType == OpenDoorH {
+		level.Map[pos.Y][pos.X].TileType = ClosedDoorH
+	}
+
 }
 
 func getNeighbors(level *Level, pos Position) ([]Position, uint8) {
@@ -206,4 +259,25 @@ func getRandomPositionInsideCircle(radius int, pos Position) Position {
 	p.X = int(r*math.Cos(angle) + float64(pos.X))
 	p.Y = int(r*math.Sin(angle) + float64(pos.Y))
 	return p
+}
+
+func isBlank(level *Level, pos Position) bool {
+	if level.Map[pos.Y][pos.X].TileType == Blank {
+		return true
+	}
+	return false
+}
+
+func (level *Level) getRandomPosition() Position {
+	pos := Position{-1, -1}
+	for pos.X < 0 || pos.Y < 0 || isWall(level, pos) || isBlank(level, pos) {
+		e, _ := hasEnemy(pos, level)
+		if e {
+			pos = Position{-1, -1}
+			continue
+		}
+		pos.X = rand.Intn(level.Width - 1)
+		pos.Y = rand.Intn(level.Height - 1)
+	}
+	return pos
 }
