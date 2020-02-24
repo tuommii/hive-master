@@ -44,7 +44,8 @@ func (ui *UI2d) GetTextureAtlas() *sdl.Texture {
 }
 
 func (ui *UI2d) NewCharacterLabel(character *game.Character) {
-	characterLabels[character] = NewLabel(character.Name, renderer)
+	s := character.Name // " lv: " + fmt.Sprint(int(math.RoundToEven((character.Level))))
+	characterLabels[character] = NewLabel(s, renderer)
 }
 
 func init() {

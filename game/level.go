@@ -5,6 +5,8 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"strconv"
+	"strings"
 )
 
 type Level struct {
@@ -66,6 +68,65 @@ func LoadLevelFromFile(filename string) *Level {
 			case '*':
 				t.TileType = ClosedChest
 			case 'o':
+				t.TileType = OpenChest
+			default:
+				t.TileType = Blank
+			}
+			level.Map[y][x] = t
+		}
+	}
+	checkLevelWallCorners(level)
+	checkLevelDoors(level)
+	return level
+}
+
+func LoadLevelFromCSVFile(filename string) *Level {
+	file, err := os.Open(filename)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	levelLines := make([]string, 0)
+	cols := 0
+	rows := 0
+	for scanner.Scan() {
+		line := scanner.Text()
+		l := strings.Split(line, ",")
+		if len(l) > cols {
+			cols = len(l)
+		}
+		levelLines = append(levelLines, line)
+		rows++
+	}
+	level := &Level{}
+	level.Width = cols
+	level.Height = rows
+	level.Map = make([][]Tile, rows)
+	for i := range level.Map {
+		level.Map[i] = make([]Tile, cols)
+	}
+	for y := 0; y < rows; y++ {
+		line := strings.Split(levelLines[y], ",")
+		for x := 0; x < len(line); x++ {
+			c, _ := strconv.Atoi(line[x])
+			var t Tile
+			switch c {
+			case -2:
+				t.TileType = Blank
+			case 64, 65, 66, 73, 74, 75, 96, 98, 128, 129, 130:
+				t.TileType = Wall
+			case -1:
+				t.TileType = Floor
+			case 102, 71:
+				t.TileType = ClosedDoorV
+			case 104, 135:
+				t.TileType = OpenDoorV
+			case 224:
+				t.TileType = ClosedChest
+			case 226:
 				t.TileType = OpenChest
 			default:
 				t.TileType = Blank

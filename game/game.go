@@ -141,13 +141,14 @@ func get_some_key(m map[string]ftapi.UserData) string {
 }
 
 func Run(gameUI GameUI) {
-	level := LoadLevelFromFile("game/maps/level1.map")
-	level.Player = NewPlayer("wkorande", 5.0, Position{23, 9}, gameUI.GetTextureAtlas(), gameUI.GetTextureIndex('@'))
+	//level := LoadLevelFromFile("game/maps/level1.map")
+	level := LoadLevelFromCSVFile("ui/assets/dungeon_csv_Wall.csv")
+	level.Player = NewPlayer("wkorande", 5.0, Position{23, 13}, gameUI.GetTextureAtlas(), gameUI.GetTextureIndex('@'))
 	gameUI.NewCharacterLabel(&level.Player.Character)
 
 	userData, _ := ftapi.LoadUserData("game/users.json")
 	level.Enemies = make([]*Enemy, 0)
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 200; i++ {
 		user := userData[get_some_key(userData)]
 		pos := level.getRandomPosition()
 		enemy := NewEnemy(user.Login, user.CursusUsers[0].Level, pos, gameUI.GetTextureAtlas(), gameUI.GetTextureIndex('E'))
