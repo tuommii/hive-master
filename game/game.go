@@ -148,13 +148,12 @@ func Run(gameUI GameUI) {
 
 	userData, _ := ftapi.LoadUserData("game/users.json")
 	level.Enemies = make([]*Enemy, 0)
-	for i := 0; i < 200; i++ {
+	for i := 0; i < 20; i++ {
 		user := userData[get_some_key(userData)]
 		pos := level.getRandomPosition()
 		enemy := NewEnemy(user.Login, user.CursusUsers[0].Level, pos, gameUI.GetTextureAtlas(), gameUI.GetTextureIndex('E'))
 		level.Enemies = append(level.Enemies, enemy)
 		gameUI.NewCharacterLabel(&enemy.Character)
-
 	}
 
 	for {

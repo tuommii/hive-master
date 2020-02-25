@@ -172,9 +172,11 @@ func (ui UI2d) Draw(level *game.Level) {
 	}
 	for _, enemy := range level.Enemies {
 		if !enemy.IsDead {
+			textureAtlas.SetColorMod(255, 50, 50)
 			enemy.Draw(renderer, tileSize, offsetX, offsetY)
 			label := characterLabels[&enemy.Character]
 			label.Draw(enemy.Pos)
+			textureAtlas.SetColorMod(255, 255, 255)
 		}
 	}
 	level.Player.Draw(renderer, tileSize, offsetX, offsetY)
