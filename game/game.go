@@ -206,7 +206,7 @@ func get_some_key(m map[string]ftapi.UserData) string {
 }
 
 func checkVisibility(level *Level, character *Character) {
-	//level.resetVisibility(false)
+	level.resetVisibility(false)
 
 	for angle := 0; angle < 360; angle++ {
 		p := Position{
@@ -217,6 +217,7 @@ func checkVisibility(level *Level, character *Character) {
 		for _, sp := range ps {
 			if sp.X >= 0 && sp.X < level.Width && sp.Y >= 0 && sp.Y < level.Height {
 				level.Visible[sp.Y][sp.X] = true
+				level.Visited[sp.Y][sp.X] = true
 			}
 			if isSolid(level, sp) {
 				break
@@ -232,10 +233,10 @@ func Run(gameUI GameUI) {
 	userData, _ := ftapi.LoadUserData("game/users.json")
 	level := LoadLevelFromCSVFile("ui/assets/dungeon_csv_Wall.csv")
 
-	playerUser := ftapi.GetAuthorizedUserData(AuthorizedClientCredentials.AccessToken)
+	//playerUser := ftapi.GetAuthorizedUserData(AuthorizedClientCredentials.AccessToken)
 
-	level.Player = NewPlayer(playerUser.Login, playerUser.CursusUsers[0].Level, level.getRandomPosition(), gameUI.GetTextureAtlas(), gameUI.GetTextureIndex("player"))
-	level.Player.SightRadius = 15
+	level.Player = NewPlayer("player", 10.0, level.getRandomPosition(), gameUI.GetTextureAtlas(), gameUI.GetTextureIndex("player"))
+	level.Player.SightRadius = 50
 	gameUI.NewCharacterLabel(&level.Player.Character)
 
 	level.Enemies = make([]*Enemy, 0)
