@@ -228,6 +228,14 @@ func isDoor(level *Level, pos Position) bool {
 	return false
 }
 
+func isClosedDoor(level *Level, pos Position) bool {
+	if level.Map[pos.Y][pos.X].TileType == ClosedDoorV ||
+		level.Map[pos.Y][pos.X].TileType == ClosedDoorH {
+		return true
+	}
+	return false
+}
+
 func hasEnemy(pos Position, level *Level) (bool, *Enemy) {
 	for _, e := range level.Enemies {
 		if pos == e.Pos {
@@ -311,6 +319,13 @@ func getRandomPositionInsideCircle(radius int, pos Position) Position {
 
 func isBlank(level *Level, pos Position) bool {
 	if level.Map[pos.Y][pos.X].TileType == Blank {
+		return true
+	}
+	return false
+}
+
+func isSolid(level *Level, pos Position) bool {
+	if isWall(level, pos) || isClosedDoor(level, pos) {
 		return true
 	}
 	return false

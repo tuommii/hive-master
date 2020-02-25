@@ -1,7 +1,9 @@
 package game
 
 import (
+	"fmt"
 	"math"
+	"math/rand"
 	"sort"
 
 	"github.com/wehard/ftapi"
@@ -136,6 +138,66 @@ func astar(level *Level, start Position, goal Position) Path {
 	return nil
 }
 
+func abs(x int) int {
+	switch {
+	case x < 0:
+		return -x
+	case x == 0:
+		return 0
+	}
+	return x
+}
+
+func bresenham(from, to Position) (points []Position) {
+	x1, y1 := from.X, from.Y
+	x2, y2 := to.X, to.Y
+
+	isSteep := abs(y2-y1) > abs(x2-x1)
+	if isSteep {
+		x1, y1 = y1, x1
+		x2, y2 = y2, x2
+	}
+
+	reversed := false
+	if x1 > x2 {
+		x1, x2 = x2, x1
+		y1, y2 = y2, y1
+		reversed = true
+	}
+
+	deltaX := x2 - x1
+	deltaY := abs(y2 - y1)
+	err := deltaX / 2
+	y := y1
+	var ystep int
+
+	if y1 < y2 {
+		ystep = 1
+	} else {
+		ystep = -1
+	}
+
+	for x := x1; x < x2+1; x++ {
+		if isSteep {
+			points = append(points, Position{y, x})
+		} else {
+			points = append(points, Position{x, y})
+		}
+		err -= deltaY
+		if err < 0 {
+			y += ystep
+			err += deltaX
+		}
+	}
+
+	if reversed {
+		for i, j := 0, len(points)-1; i < j; i, j = i+1, j-1 {
+			points[i], points[j] = points[j], points[i]
+		}
+	}
+	return
+}
+
 func get_some_key(m map[string]ftapi.UserData) string {
 	for k := range m {
 		return k
@@ -144,27 +206,48 @@ func get_some_key(m map[string]ftapi.UserData) string {
 }
 
 func checkVisibility(level *Level, character *Character) {
-	v := BreadthFirstSearch(level, character.Pos)
+	//level.resetVisibility(false)
 
-	for p := range v {
-		level.Visible[p.Y][p.X] = true
+	for angle := 0; angle < 360; angle++ {
+		p := Position{
+			X: character.Pos.X + int(math.Cos(float64(angle)*2*math.Phi/180)*float64(character.SightRadius)),
+			Y: character.Pos.Y + int(math.Sin(float64(angle)*2*math.Phi/180)*float64(character.SightRadius)),
+		}
+		ps := bresenham(character.Pos, p)
+		for _, sp := range ps {
+			if sp.X >= 0 && sp.X < level.Width && sp.Y >= 0 && sp.Y < level.Height {
+				level.Visible[sp.Y][sp.X] = true
+			}
+			if isSolid(level, sp) {
+				break
+			}
+		}
 	}
 }
 
+var AuthorizedClientCredentials ftapi.ClientCredentials
+
 func Run(gameUI GameUI) {
+
 	userData, _ := ftapi.LoadUserData("game/users.json")
 	level := LoadLevelFromCSVFile("ui/assets/dungeon_csv_Wall.csv")
 
-	playerUser := userData["wkorande"]
+	playerUser := ftapi.GetAuthorizedUserData(AuthorizedClientCredentials.AccessToken)
 
 	level.Player = NewPlayer(playerUser.Login, playerUser.CursusUsers[0].Level, level.getRandomPosition(), gameUI.GetTextureAtlas(), gameUI.GetTextureIndex("player"))
+	level.Player.SightRadius = 15
 	gameUI.NewCharacterLabel(&level.Player.Character)
 
 	level.Enemies = make([]*Enemy, 0)
 	for i := 0; i < 50; i++ {
-		user := userData[get_some_key(userData)]
+		user := userData[rand.Intn(len(userData))]
+		if len(user.CursusUsers) == 0 {
+			fmt.Println("bad enemy")
+			continue
+		}
+		userLevel := user.CursusUsers[0].Level
 		pos := level.getRandomPosition()
-		enemy := NewEnemy(user.Login, user.CursusUsers[0].Level, pos, gameUI.GetTextureAtlas(), gameUI.GetTextureIndex("enemy"))
+		enemy := NewEnemy(user.Login, userLevel, pos, gameUI.GetTextureAtlas(), gameUI.GetTextureIndex("enemy"))
 		level.Enemies = append(level.Enemies, enemy)
 		gameUI.NewCharacterLabel(&enemy.Character)
 	}
@@ -185,7 +268,6 @@ func Run(gameUI GameUI) {
 		}
 
 		// Check visibility
-		level.resetVisibility(false)
 		checkVisibility(level, &level.Player.Character)
 
 		gameUI.Draw(level)

@@ -3,7 +3,6 @@ package ui
 import (
 	"bufio"
 	"fmt"
-	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -45,7 +44,7 @@ func (ui *UI2d) GetTextureAtlas() *sdl.Texture {
 }
 
 func (ui *UI2d) NewCharacterLabel(character *game.Character) {
-	s := character.Name + " lv:" + fmt.Sprint(int(math.RoundToEven((character.Level))))
+	s := character.Name + " lv:" + fmt.Sprintf("%.2f", character.Level)
 	characterLabels[character] = NewLabel(s, renderer)
 }
 

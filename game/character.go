@@ -16,6 +16,7 @@ type Character struct {
 	Level       float64
 	Health      int
 	IsDead      bool
+	SightRadius int
 	texture     *sdl.Texture
 	TextureRect sdl.Rect
 }
