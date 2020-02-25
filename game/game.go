@@ -22,7 +22,7 @@ type Position struct {
 	Y int
 }
 
-type TileType rune
+type TileType string
 
 type Tile struct {
 	TileType TileType
@@ -40,37 +40,39 @@ func (p priorityArray) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 func (p priorityArray) Less(i, j int) bool { return p[i].priority < p[j].priority }
 
 const (
-	Blank       TileType = ' '
-	Wall        TileType = '#'
-	WallSW      TileType = 'F'
-	WallNS      TileType = 'I'
-	WallNW      TileType = 'L'
-	WallNE      TileType = 'J'
-	WallSE      TileType = 'T'
-	WallN       TileType = 'N'
-	WallS       TileType = 'S'
-	WallE       TileType = 'E'
-	WallW       TileType = 'W'
-	WallSWE     TileType = 'X'
-	WallNSW     TileType = 'K'
-	WallNSE     TileType = 'Y'
-	Floor       TileType = '.'
-	ClosedDoorV TileType = '|'
-	OpenDoorV   TileType = '/'
-	ClosedDoorH TileType = '-'
-	OpenDoorH   TileType = '\\'
-	ClosedChest TileType = '*'
-	OpenChest   TileType = 'o'
+	Blank       TileType = "blank"
+	Wall        TileType = "wall"
+	WallEW      TileType = "wall_ew"
+	WallSW      TileType = "wall_sw"
+	WallNS      TileType = "wall_ns"
+	WallNW      TileType = "wall_nw"
+	WallNE      TileType = "wall_ne"
+	WallSE      TileType = "wall_se"
+	WallN       TileType = "wall_n"
+	WallS       TileType = "wall_s"
+	WallE       TileType = "wall_e"
+	WallW       TileType = "wall_w"
+	WallSWE     TileType = "wall_swe"
+	WallNSW     TileType = "wall_nsw"
+	WallNSE     TileType = "wall_nse"
+	WallNWE     TileType = "wall_nwe"
+	Floor       TileType = "floor"
+	Hole        TileType = "hole"
+	ClosedDoorV TileType = "door_closed_v"
+	OpenDoorV   TileType = "door_open_v"
+	ClosedDoorH TileType = "door_closed_h"
+	OpenDoorH   TileType = "door_open_h"
+	ClosedChest TileType = "chest_closed"
+	OpenChest   TileType = "chest_open"
 )
 
 type Path []Position
 
-func bfs(ui GameUI, level *Level, startPos Position) {
+func BreadthFirstSearch(level *Level, startPos Position) map[Position]bool {
 	frontier := make([]Position, 0, 8)
 	frontier = append(frontier, startPos)
 	visited := make(map[Position]bool)
 	visited[startPos] = true
-	level.Debug = visited
 	for len(frontier) > 0 {
 		current := frontier[0]
 		frontier = frontier[1:]
@@ -82,6 +84,7 @@ func bfs(ui GameUI, level *Level, startPos Position) {
 			}
 		}
 	}
+	return visited
 }
 
 func astar(level *Level, start Position, goal Position) Path {
@@ -140,45 +143,61 @@ func get_some_key(m map[string]ftapi.UserData) string {
 	return ""
 }
 
+func checkVisibility(level *Level, character *Character) {
+	v := BreadthFirstSearch(level, character.Pos)
+
+	for p := range v {
+		level.Visible[p.Y][p.X] = true
+	}
+}
+
 func Run(gameUI GameUI) {
-	//level := LoadLevelFromFile("game/maps/level1.map")
+	userData, _ := ftapi.LoadUserData("game/users.json")
 	level := LoadLevelFromCSVFile("ui/assets/dungeon_csv_Wall.csv")
-	level.Player = NewPlayer("wkorande", 5.0, Position{23, 13}, gameUI.GetTextureAtlas(), gameUI.GetTextureIndex('@'))
+
+	playerUser := userData["wkorande"]
+
+	level.Player = NewPlayer(playerUser.Login, playerUser.CursusUsers[0].Level, level.getRandomPosition(), gameUI.GetTextureAtlas(), gameUI.GetTextureIndex("player"))
 	gameUI.NewCharacterLabel(&level.Player.Character)
 
-	userData, _ := ftapi.LoadUserData("game/users.json")
 	level.Enemies = make([]*Enemy, 0)
-	for i := 0; i < 20; i++ {
+	for i := 0; i < 50; i++ {
 		user := userData[get_some_key(userData)]
 		pos := level.getRandomPosition()
-		enemy := NewEnemy(user.Login, user.CursusUsers[0].Level, pos, gameUI.GetTextureAtlas(), gameUI.GetTextureIndex('E'))
+		enemy := NewEnemy(user.Login, user.CursusUsers[0].Level, pos, gameUI.GetTextureAtlas(), gameUI.GetTextureIndex("enemy"))
 		level.Enemies = append(level.Enemies, enemy)
 		gameUI.NewCharacterLabel(&enemy.Character)
 	}
 
 	for {
+		// Clear dead enemies
 		for i := len(level.Enemies) - 1; i >= 0; i-- {
 			if level.Enemies[i].IsDead {
 				level.Enemies = append(level.Enemies[:i], level.Enemies[i+1:]...)
 			}
 		}
-		level.Debug = make(map[Position]bool)
+
+		// Update enemies
 		for _, e := range level.Enemies {
 			if !e.IsDead {
 				e.Update(level)
 			}
 		}
+
+		// Check visibility
+		level.resetVisibility(false)
+		checkVisibility(level, &level.Player.Character)
+
 		gameUI.Draw(level)
 		input := gameUI.GetInput()
 		if input.Type == Quit {
 			return
 		}
-		if input.Type == Search {
-			level.Debug = make(map[Position]bool)
+		if input.Type == Action {
+			checkHole(level.Player.Pos, level)
+			//level.Debug = make(map[Position]bool)
 			//astar(level, level.Player.Pos, getRandomPositionInsideCircle(5, level.Player.Pos))
 		}
-
 		handleInput(level, input)
-
 	}
 }

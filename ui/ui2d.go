@@ -3,6 +3,7 @@ package ui
 import (
 	"bufio"
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -44,7 +45,7 @@ func (ui *UI2d) GetTextureAtlas() *sdl.Texture {
 }
 
 func (ui *UI2d) NewCharacterLabel(character *game.Character) {
-	s := character.Name // " lv: " + fmt.Sprint(int(math.RoundToEven((character.Level))))
+	s := character.Name + " lv:" + fmt.Sprint(int(math.RoundToEven((character.Level))))
 	characterLabels[character] = NewLabel(s, renderer)
 }
 
@@ -98,23 +99,22 @@ func loadTextureIndex(filename string) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		line = strings.TrimSpace(line)
+		split := strings.Split(line, ",")
 		var tile game.Tile
-		tile.TileType = getTileType(rune(line[0]))
-		xy := line[1:]
-		split := strings.Split(xy, ",")
-		x, err := strconv.ParseInt(strings.TrimSpace(split[0]), 10, 64)
+		tile.TileType = getTileType(strings.TrimSpace(split[0]))
+		x, err := strconv.ParseInt(strings.TrimSpace(split[1]), 10, 64)
 		if err != nil {
 			panic(err)
 		}
-		y, err := strconv.ParseInt(strings.TrimSpace(split[1]), 10, 64)
+		y, err := strconv.ParseInt(strings.TrimSpace(split[2]), 10, 64)
 		if err != nil {
 			panic(err)
 		}
-		w, err := strconv.ParseInt(strings.TrimSpace(split[2]), 10, 64)
+		w, err := strconv.ParseInt(strings.TrimSpace(split[3]), 10, 64)
 		if err != nil {
 			panic(err)
 		}
-		h, err := strconv.ParseInt(strings.TrimSpace(split[3]), 10, 64)
+		h, err := strconv.ParseInt(strings.TrimSpace(split[4]), 10, 64)
 		if err != nil {
 			panic(err)
 		}
@@ -125,8 +125,8 @@ func loadTextureIndex(filename string) {
 	}
 }
 
-func getTileType(r rune) game.TileType {
-	return game.TileType(r)
+func getTileType(s string) game.TileType {
+	return game.TileType(s)
 }
 
 func (ui UI2d) Draw(level *game.Level) {
@@ -150,7 +150,7 @@ func (ui UI2d) Draw(level *game.Level) {
 	renderer.Clear()
 	for y, row := range level.Map {
 		for x, tile := range row {
-			if tile.TileType != game.Blank {
+			if tile.TileType != game.Blank && level.Visible[y][x] {
 				srcRect := textureIndex[level.Map[y][x].TileType]
 				destRect := sdl.Rect{
 					X: int32(x*int(tileSize)) + offsetX,
@@ -171,12 +171,12 @@ func (ui UI2d) Draw(level *game.Level) {
 		}
 	}
 	for _, enemy := range level.Enemies {
-		if !enemy.IsDead {
-			textureAtlas.SetColorMod(255, 50, 50)
+		if !enemy.IsDead && level.Visible[enemy.Pos.Y][enemy.Pos.X] {
+			//textureAtlas.SetColorMod(255, 0, 0)
 			enemy.Draw(renderer, tileSize, offsetX, offsetY)
 			label := characterLabels[&enemy.Character]
 			label.Draw(enemy.Pos)
-			textureAtlas.SetColorMod(255, 255, 255)
+			//textureAtlas.SetColorMod(255, 255, 255)
 		}
 	}
 	level.Player.Draw(renderer, tileSize, offsetX, offsetY)

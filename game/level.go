@@ -2,82 +2,23 @@ package game
 
 import (
 	"bufio"
+	"fmt"
 	"math"
 	"math/rand"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Level struct {
 	Map     [][]Tile
+	Visible [][]bool
 	Player  *Player
 	Enemies []*Enemy
 	Width   int
 	Height  int
 	Debug   map[Position]bool
-}
-
-func LoadLevelFromFile(filename string) *Level {
-	file, err := os.Open(filename)
-	if err != nil {
-		panic(err)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-
-	levelLines := make([]string, 0)
-	cols := 0
-	rows := 0
-	for scanner.Scan() {
-		line := scanner.Text()
-		if len(line) > cols {
-			cols = len(line)
-		}
-		levelLines = append(levelLines, line)
-		rows++
-	}
-	level := &Level{}
-	level.Width = cols
-	level.Height = rows
-	level.Map = make([][]Tile, rows)
-	for i := range level.Map {
-		level.Map[i] = make([]Tile, cols)
-	}
-	for y := 0; y < rows; y++ {
-		line := levelLines[y]
-		for x := 0; x < len(line); x++ {
-			c := line[x]
-			var t Tile
-			switch c {
-			case ' ', '\t', '\r':
-				t.TileType = Blank
-			case '#':
-				t.TileType = Wall
-			case '.':
-				t.TileType = Floor
-			case '|':
-				t.TileType = ClosedDoorV
-			case '/':
-				t.TileType = OpenDoorV
-			case '-':
-				t.TileType = ClosedDoorH
-			case '\\':
-				t.TileType = ClosedDoorH
-			case '*':
-				t.TileType = ClosedChest
-			case 'o':
-				t.TileType = OpenChest
-			default:
-				t.TileType = Blank
-			}
-			level.Map[y][x] = t
-		}
-	}
-	checkLevelWallCorners(level)
-	checkLevelDoors(level)
-	return level
 }
 
 func LoadLevelFromCSVFile(filename string) *Level {
@@ -105,8 +46,10 @@ func LoadLevelFromCSVFile(filename string) *Level {
 	level.Width = cols
 	level.Height = rows
 	level.Map = make([][]Tile, rows)
+	level.Visible = make([][]bool, rows)
 	for i := range level.Map {
 		level.Map[i] = make([]Tile, cols)
+		level.Visible[i] = make([]bool, cols)
 	}
 	for y := 0; y < rows; y++ {
 		line := strings.Split(levelLines[y], ",")
@@ -116,14 +59,42 @@ func LoadLevelFromCSVFile(filename string) *Level {
 			switch c {
 			case -2:
 				t.TileType = Blank
-			case 64, 65, 66, 73, 74, 75, 96, 98, 128, 129, 130:
+			case 8:
+				t.TileType = Hole
+			case 42:
+				t.TileType = WallS
+			case 65, 129:
 				t.TileType = Wall
+			case 64:
+				t.TileType = WallSW
+			case 67:
+				t.TileType = WallSW
+			case 66:
+				t.TileType = WallSE
+			case 68:
+				t.TileType = WallNWE
+			case 69:
+				t.TileType = WallNSE
+			case 73:
+				t.TileType = WallE
+			case 74:
+				t.TileType = WallSWE
+			case 75:
+				t.TileType = WallW
+			case 96, 98:
+				t.TileType = WallNS
+			case 106:
+				t.TileType = WallN
+			case 128:
+				t.TileType = WallNW
+			case 130:
+				t.TileType = WallNE
 			case -1:
 				t.TileType = Floor
-			case 102, 71:
+			case 71:
+				t.TileType = ClosedDoorH
+			case 102:
 				t.TileType = ClosedDoorV
-			case 104, 135:
-				t.TileType = OpenDoorV
 			case 224:
 				t.TileType = ClosedChest
 			case 226:
@@ -134,12 +105,20 @@ func LoadLevelFromCSVFile(filename string) *Level {
 			level.Map[y][x] = t
 		}
 	}
-	checkLevelWallCorners(level)
-	checkLevelDoors(level)
+	//checkLevelWallOrientation(level)
+	//checkLevelDoors(level)
 	return level
 }
 
-func checkLevelDoors(level *Level) {
+func (level *Level) resetVisibility(v bool) {
+	for y := 0; y < level.Height; y++ {
+		for x := 0; x < level.Width; x++ {
+			level.Visible[y][x] = v
+		}
+	}
+}
+
+func checkLevelDoorOrientation(level *Level) {
 	for y, rows := range level.Map {
 		for x, _ := range rows {
 			if isDoor(level, Position{x, y}) {
@@ -154,7 +133,7 @@ func checkLevelDoors(level *Level) {
 	}
 }
 
-func checkLevelWallCorners(level *Level) {
+func checkLevelWallOrientation(level *Level) {
 	for y, rows := range level.Map {
 		for x, _ := range rows {
 			if isWall(level, Position{x, y}) {
@@ -221,18 +200,19 @@ func isWall(level *Level, pos Position) bool {
 		return true
 	}
 	if level.Map[pos.Y][pos.X].TileType == Wall ||
-		level.Map[pos.Y][pos.X].TileType == WallSW ||
-		level.Map[pos.Y][pos.X].TileType == WallNW ||
-		level.Map[pos.Y][pos.X].TileType == WallNS ||
-		level.Map[pos.Y][pos.X].TileType == WallNE ||
-		level.Map[pos.Y][pos.X].TileType == WallSE ||
 		level.Map[pos.Y][pos.X].TileType == WallN ||
+		level.Map[pos.Y][pos.X].TileType == WallW ||
 		level.Map[pos.Y][pos.X].TileType == WallS ||
 		level.Map[pos.Y][pos.X].TileType == WallE ||
-		level.Map[pos.Y][pos.X].TileType == WallW ||
+		level.Map[pos.Y][pos.X].TileType == WallNS ||
+		level.Map[pos.Y][pos.X].TileType == WallNE ||
+		level.Map[pos.Y][pos.X].TileType == WallNW ||
+		level.Map[pos.Y][pos.X].TileType == WallSW ||
+		level.Map[pos.Y][pos.X].TileType == WallSE ||
 		level.Map[pos.Y][pos.X].TileType == WallSWE ||
 		level.Map[pos.Y][pos.X].TileType == WallNSE ||
-		level.Map[pos.Y][pos.X].TileType == WallNSW {
+		level.Map[pos.Y][pos.X].TileType == WallNSW ||
+		level.Map[pos.Y][pos.X].TileType == WallNWE {
 		return true
 	}
 	return false
@@ -285,6 +265,13 @@ func checkDoor(pos Position, level *Level) {
 
 }
 
+func checkHole(pos Position, level *Level) {
+	t := level.getTileType(pos)
+	if t == Hole {
+		fmt.Println("you check the hole")
+	}
+}
+
 func getNeighbors(level *Level, pos Position) ([]Position, uint8) {
 	var flags uint8
 	neighbors := make([]Position, 0, 4)
@@ -329,7 +316,13 @@ func isBlank(level *Level, pos Position) bool {
 	return false
 }
 
+func (level *Level) getTileType(pos Position) TileType {
+	return level.Map[pos.Y][pos.X].TileType
+}
+
 func (level *Level) getRandomPosition() Position {
+	t := time.Now().Nanosecond()
+	rand.Seed(int64(t))
 	pos := Position{-1, -1}
 	for pos.X < 0 || pos.Y < 0 || isWall(level, pos) || isBlank(level, pos) {
 		e, _ := hasEnemy(pos, level)
