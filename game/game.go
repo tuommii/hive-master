@@ -198,7 +198,7 @@ func bresenham(from, to Position) (points []Position) {
 	return
 }
 
-func get_some_key(m map[string]ftapi.UserData) string {
+func getSomeKey(m map[string]ftapi.UserData) string {
 	for k := range m {
 		return k
 	}
