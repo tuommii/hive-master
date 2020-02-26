@@ -14,6 +14,7 @@ import (
 type Level struct {
 	Map     [][]Tile
 	Visible [][]bool
+	Visited [][]bool
 	Player  *Player
 	Enemies []*Enemy
 	Width   int
@@ -47,9 +48,11 @@ func LoadLevelFromCSVFile(filename string) *Level {
 	level.Height = rows
 	level.Map = make([][]Tile, rows)
 	level.Visible = make([][]bool, rows)
+	level.Visited = make([][]bool, rows)
 	for i := range level.Map {
 		level.Map[i] = make([]Tile, cols)
 		level.Visible[i] = make([]bool, cols)
+		level.Visited[i] = make([]bool, cols)
 	}
 	for y := 0; y < rows; y++ {
 		line := strings.Split(levelLines[y], ",")

@@ -12,6 +12,7 @@ import (
 //var AuthorizedClientCredentials ftapi.ClientCredentials
 
 func main() {
+
 	clientCredentials := ftapi.Authorize()
 	game.AuthorizedClientCredentials = clientCredentials
 	fmt.Println("Welcome, ", ftapi.GetAuthorizedUserData(clientCredentials.AccessToken).Displayname)

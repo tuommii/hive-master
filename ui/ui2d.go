@@ -149,7 +149,7 @@ func (ui UI2d) Draw(level *game.Level) {
 	renderer.Clear()
 	for y, row := range level.Map {
 		for x, tile := range row {
-			if tile.TileType != game.Blank && level.Visible[y][x] {
+			if tile.TileType != game.Blank && level.Visited[y][x] {
 				srcRect := textureIndex[level.Map[y][x].TileType]
 				destRect := sdl.Rect{
 					X: int32(x*int(tileSize)) + offsetX,
@@ -157,10 +157,11 @@ func (ui UI2d) Draw(level *game.Level) {
 					W: tileSize,
 					H: tileSize,
 				}
-				pos := game.Position{x, y}
-				if level.Debug[pos] {
-					textureAtlas.SetColorMod(128, 255, 128)
-				} else {
+				//pos := game.Position{x, y}
+				if level.Visited[y][x] {
+					textureAtlas.SetColorMod(128, 128, 128)
+				}
+				if level.Visible[y][x] {
 					textureAtlas.SetColorMod(255, 255, 255)
 				}
 				floorRect := textureIndex[game.Floor]
@@ -169,6 +170,7 @@ func (ui UI2d) Draw(level *game.Level) {
 			}
 		}
 	}
+	textureAtlas.SetColorMod(255, 255, 255)
 	for _, enemy := range level.Enemies {
 		if !enemy.IsDead && level.Visible[enemy.Pos.Y][enemy.Pos.X] {
 			//textureAtlas.SetColorMod(255, 0, 0)
